@@ -15,8 +15,8 @@ use serde::{Deserialize, Serialize};
 #[macro_export]
 macro_rules! selector {
     ($e: expr) => {{
-        use ::std::sync::LazyLock;
         use ::scraper::Selector;
+        use ::std::sync::LazyLock;
         static SELECTOR: LazyLock<Selector> = LazyLock::new(|| Selector::parse($e).unwrap());
         &*SELECTOR
     }};
