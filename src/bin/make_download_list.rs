@@ -44,7 +44,7 @@ fn main() -> Result<()> {
                         .with_context(|| format!("Attribute `href` not found: {}", a.html()))?;
                     let link = href
                         .strip_prefix('/')
-                        .with_context(|| format!("`href` not starts with `/`: {href:?}"))?
+                        .with_context(|| format!("`href` does not start with `/`: {href:?}"))?
                         .to_owned()
                         .into();
                     (title, link)
