@@ -5,18 +5,19 @@ use std::{
 };
 
 use anyhow::{Result, bail};
-use derive_more::From;
+use derive_more::{Display, From};
 use itertools::iterate;
 use log::warn;
 use percent_encoding::{CONTROLS, percent_encode};
 use scraper::Html;
+use serde::{Deserialize, Serialize};
 
 #[macro_export]
 macro_rules! selector {
     ($e: expr) => {{
-        use ::once_cell::sync::Lazy;
+        use ::std::sync::LazyLock;
         use ::scraper::Selector;
-        static SELECTOR: Lazy<Selector> = Lazy::new(|| Selector::parse($e).unwrap());
+        static SELECTOR: LazyLock<Selector> = LazyLock::new(|| Selector::parse($e).unwrap());
         &*SELECTOR
     }};
 }
@@ -66,6 +67,42 @@ impl WikiFetcher {
     }
 }
 
-#[derive(From)]
+#[derive(Debug, Display, From, Serialize, Deserialize)]
 #[from(forward)]
 pub struct PageTitle<'a>(Cow<'a, str>);
+
+pub mod song_list {
+    use chrono::NaiveDate;
+    use derive_more::{Display, From};
+    use serde::{Deserialize, Serialize};
+
+    use crate::PageTitle;
+
+    #[derive(Debug, Serialize, Deserialize)]
+    pub struct List {
+        pub songs: Vec<Song>,
+    }
+
+    #[derive(Debug, Serialize, Deserialize)]
+    pub struct Song {
+        pub genre: GenreCode,
+        pub title: SongTitle,
+        pub artist: Artist,
+        pub link: PageTitle<'static>,
+        pub date: FirstAppearanceDate,
+        pub material: FirstAppearanceMaterial,
+    }
+
+    #[derive(
+        PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Serialize, Deserialize, From, Display,
+    )]
+    pub struct GenreCode(String);
+    #[derive(Debug, Serialize, Deserialize, From, Display)]
+    pub struct SongTitle(String);
+    #[derive(Debug, Serialize, Deserialize, From, Display)]
+    pub struct Artist(String);
+    #[derive(Debug, Serialize, Deserialize, From)]
+    pub struct FirstAppearanceDate(Option<NaiveDate>);
+    #[derive(Debug, Serialize, Deserialize, From, Display)]
+    pub struct FirstAppearanceMaterial(String);
+}
