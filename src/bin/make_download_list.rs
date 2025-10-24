@@ -1,12 +1,11 @@
 use std::path::PathBuf;
 
 use anyhow::{Context, Result, bail};
-use chrono::NaiveDate;
 use clap::Parser;
 use itertools::Itertools;
 use log::{error, info};
 use scraper::Html;
-use shiny_live_history_diagram::{WikiFetcher, selector, song_list};
+use shiny_live_history_diagram::{WikiFetcher, parse_date_permissive, selector, song_list};
 
 #[derive(Parser)]
 struct Opts {
@@ -54,11 +53,7 @@ fn main() -> Result<()> {
                 let date = {
                     let date = date.text().collect::<String>();
                     (date != "0000/00/00")
-                        .then(|| {
-                            NaiveDate::parse_from_str(&date, "%Y/%m/%d")
-                                .or_else(|_| NaiveDate::parse_from_str(&date, "%Y-%m-%d"))
-                                .with_context(|| format!("While parsing date string {date:?}"))
-                        })
+                        .then(|| parse_date_permissive(&date))
                         .transpose()?
                         .into()
                 };

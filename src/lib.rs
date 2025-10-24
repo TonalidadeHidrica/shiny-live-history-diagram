@@ -4,7 +4,8 @@ use std::{
     time::{Duration, Instant},
 };
 
-use anyhow::{Result, bail};
+use anyhow::{bail, Context, Result};
+use chrono::NaiveDate;
 use derive_more::{Display, From};
 use itertools::iterate;
 use log::warn;
@@ -109,7 +110,7 @@ pub mod song_list {
         Display,
     )]
     pub struct GenreCode(String);
-    #[derive(Debug, Serialize, Deserialize, From, Display)]
+    #[derive(Clone, Debug, Serialize, Deserialize, From, Display)]
     pub struct SongTitle(String);
     #[derive(Debug, Serialize, Deserialize, From, Display)]
     pub struct Artist(String);
@@ -132,4 +133,47 @@ pub mod song_list {
             Ok(s)
         }
     }
+}
+
+pub mod song_details {
+    use serde::{Deserialize, Serialize};
+
+    use crate::song_list::SongTitle;
+
+    #[derive(Debug, Serialize, Deserialize)]
+    pub struct Song {
+        pub title: SongTitle,
+        pub performances: Vec<performance::Performance>,
+    }
+
+    pub mod performance {
+        use chrono::NaiveDate;
+        use derive_more::{Display, From};
+        use serde::{Deserialize, Serialize};
+
+        #[derive(Debug, Serialize, Deserialize)]
+        pub struct Performance {
+            pub date: Date,
+            pub kind: Kind,
+            pub concert_name: ConcertName,
+            pub venue: Venue,
+            pub performers: Vec<Performer>,
+        }
+        #[derive(Debug, Serialize, Deserialize, From)]
+        pub struct Date(NaiveDate);
+        #[derive(PartialEq, Eq, Debug, Serialize, Deserialize, From, Display)]
+        pub struct Kind(String);
+        #[derive(Debug, Serialize, Deserialize, From, Display)]
+        pub struct ConcertName(String);
+        #[derive(Debug, Serialize, Deserialize, From, Display)]
+        pub struct Venue(String);
+        #[derive(Debug, Serialize, Deserialize, From, Display)]
+        pub struct Performer(String);
+    }
+}
+
+pub fn parse_date_permissive(date: &str) -> anyhow::Result<NaiveDate> {
+    NaiveDate::parse_from_str(date, "%Y/%m/%d")
+        .or_else(|_| NaiveDate::parse_from_str(date, "%Y-%m-%d"))
+        .with_context(|| format!("Falied to parse date string {date:?}"))
 }
