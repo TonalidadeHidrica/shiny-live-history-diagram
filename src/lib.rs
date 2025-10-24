@@ -9,7 +9,6 @@ use derive_more::{Display, From};
 use itertools::iterate;
 use log::warn;
 use percent_encoding::{CONTROLS, percent_encode};
-use scraper::Html;
 use serde::{Deserialize, Serialize};
 
 #[macro_export]
@@ -38,7 +37,7 @@ impl Default for WikiFetcher {
 }
 
 impl WikiFetcher {
-    pub fn fetch(&mut self, title: PageTitle) -> Result<Html> {
+    pub fn fetch(&mut self, title: &PageTitle) -> Result<String> {
         if let Some(last_fetch) = self.last_fetch
             && let Some(timeout) = self.throttle.checked_sub(Instant::now() - last_fetch)
         {
@@ -56,7 +55,7 @@ impl WikiFetcher {
                 if !response.status().is_success() {
                     bail!("Invalid status code: {}", response.status());
                 }
-                Ok(Html::parse_document(&response.text()?))
+                Ok(response.text()?)
             })() {
                 Ok(result) => return Ok(result),
                 Err(e) => warn!("Fetch error: {e:#}"),
@@ -72,8 +71,10 @@ impl WikiFetcher {
 pub struct PageTitle<'a>(Cow<'a, str>);
 
 pub mod song_list {
+    use anyhow::Result;
     use chrono::NaiveDate;
-    use derive_more::{Display, From};
+    use derive_more::{Display, From, FromStr};
+    use percent_encoding::percent_decode;
     use serde::{Deserialize, Serialize};
 
     use crate::PageTitle;
@@ -94,7 +95,18 @@ pub mod song_list {
     }
 
     #[derive(
-        PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Serialize, Deserialize, From, Display,
+        Clone,
+        PartialEq,
+        Eq,
+        PartialOrd,
+        Ord,
+        Hash,
+        Debug,
+        Serialize,
+        Deserialize,
+        From,
+        FromStr,
+        Display,
     )]
     pub struct GenreCode(String);
     #[derive(Debug, Serialize, Deserialize, From, Display)]
@@ -105,4 +117,19 @@ pub mod song_list {
     pub struct FirstAppearanceDate(Option<NaiveDate>);
     #[derive(Debug, Serialize, Deserialize, From, Display)]
     pub struct FirstAppearanceMaterial(String);
+
+    impl PageTitle<'_> {
+        pub fn to_file_name(&self) -> Result<String> {
+            let s = percent_decode(self.0.as_bytes()).decode_utf8()?;
+            let escape = |c: char| match c {
+                '\u{0}'..='\u{1F}' | '<' | '>' | ':' | '\\' | '|' | '?' | '*' | '"' | '/' => {
+                    format!("%{:02x}", c as u32)
+                }
+                _ => c.to_string(),
+            };
+            let mut s: String = s.chars().map(escape).collect();
+            s += ".html";
+            Ok(s)
+        }
+    }
 }

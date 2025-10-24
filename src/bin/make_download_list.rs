@@ -5,6 +5,7 @@ use chrono::NaiveDate;
 use clap::Parser;
 use itertools::Itertools;
 use log::{error, info};
+use scraper::Html;
 use shiny_live_history_diagram::{WikiFetcher, selector, song_list};
 
 #[derive(Parser)]
@@ -18,7 +19,7 @@ fn main() -> Result<()> {
     let opts = Opts::parse();
 
     let mut fetcher = WikiFetcher::default();
-    let result = fetcher.fetch("全曲一覧".into())?;
+    let result = Html::parse_document(&fetcher.fetch(&"全曲一覧".into())?);
 
     let mut res = song_list::List { songs: vec![] };
     for tr in result.select(selector!("div.content tbody > tr")) {
